@@ -81,7 +81,49 @@
 
   jdyrlandweaver
   ====================*/
-void first_pass() {
+void first_pass(int *num_frames,char *name) {
+  int name_present=0;
+  int vary_present=0;
+  int frame_present=0;
+  for (i=0;i<lastop;i++) {
+    switch (op[i].opcode) {
+    case FRAMEs:
+      if (!frame_present){
+	frame_present=1;
+	&num_frames=op[i].opcode.frames.num_frames;
+      }
+      else{
+	printf("FRAMES value set more than once\nExiting...\n");
+	exit(42);
+      }
+    case BASENAME:
+      if (!name_present){
+	name_present=1;
+	name=op[i].opcode.basename.p;
+      }
+      else{
+	printf("BASENAME set more than once\nExiting...\n");
+	exit(42);
+      }
+    case VARY:
+      vary_present+=1;
+      if (op[i].opcode.vary.start_frame < 0){
+	printf("VARY with negative frames\nExiting...\n");
+	exit(42);
+      }
+      if (op[i].opcode.vary.start_frame < 0){
+	printf("VARY with frames beyond last frame\nExiting...\n");
+	exit(42);
+      }
+    }
+    if (vary_present && !frame_present){
+      printf("VARY found without total FRAME set\nExiting...\n");
+      exit(42);
+    }
+    if (!name_present && (vary_present || frame_present)){
+       printf("No BASENAME given\nExiting...\n");
+       name="boring.png";
+    }
 }
 
 /*======== struct vary_node ** second_pass()) ==========
@@ -188,11 +230,9 @@ void my_main( int polygons ) {
   g.green = 255;
   g.blue = 255;
 
-    
     for (i=0;i<lastop;i++) {
-  
       switch (op[i].opcode) {
-
+      
       case SPHERE:
 	add_sphere( tmp,op[i].op.sphere.d[0], //cx
 		    op[i].op.sphere.d[1],  //cy
