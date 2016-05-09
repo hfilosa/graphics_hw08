@@ -93,7 +93,7 @@ void first_pass(int *num_frames,char *name) {
 	&num_frames=op[i].opcode.frames.num_frames;
       }
       else{
-	printf("FRAMES value set more than once\nExiting...\n");
+	printf("FRAMES value set more than once\tCorrection: Only set FRAMES once\nExiting...\n");
 	exit(42);
       }
     case BASENAME:
@@ -102,22 +102,26 @@ void first_pass(int *num_frames,char *name) {
 	name=op[i].opcode.basename.p;
       }
       else{
-	printf("BASENAME set more than once\nExiting...\n");
+	printf("BASENAME set more than once\tCorrection: Only set BASENAME once\nExiting...\n");
 	exit(42);
       }
     case VARY:
       vary_present+=1;
       if (op[i].opcode.vary.start_frame < 0){
-	printf("VARY with negative frames\nExiting...\n");
+	printf("VARY with negative frames\tCorrection: Don't use negative frames\nExiting...\n");
 	exit(42);
       }
-      if (op[i].opcode.vary.start_frame < 0){
-	printf("VARY with frames beyond last frame\nExiting...\n");
+      if (op[i].opcode.vary.end_frame < 0){
+	printf("VARY with frames beyond last frame\tCorrection: Don't exceed last frame\nExiting...\n");
+	exit(42);
+      }
+      if (op[i].opcode.vary.start_frame > op[i].opcode.vary.end_frame){
+	printf("VARY with frames given in decreasing order\tCorrection: The first vary frame should be before the last vary frame\nExiting...\n");
 	exit(42);
       }
     }
     if (vary_present && !frame_present){
-      printf("VARY found without total FRAME set\nExiting...\n");
+      printf("VARY found without total FRAMEs set\tCorrection: You need to set the total number of frames\nExiting...\n");
       exit(42);
     }
     if (!name_present && (vary_present || frame_present)){
@@ -143,12 +147,37 @@ void first_pass(int *num_frames,char *name) {
   Go through the opcode array, and when you find vary, go 
   from knobs[0] to knobs[frames-1] and add (or modify) the
   vary_node corresponding to the given knob with the
-  appropirate value. 
+  appropriate value. 
 
   05/17/12 09:29:31
   jdyrlandweaver
   ====================*/
-struct vary_node ** second_pass() {
+struct vary_node ** second_pass(int frames) {
+  vary_node * list[frames];
+  vary_node * temp;
+  for (i=0;i<frames;i++)
+    list[i]=0;
+  for (i=0;i<lastop;i++) {
+    if (op[i].opcode == VARY){
+      int frame_num=op[i].opcode.vary.endframe-op[i].opcode.vary.start_frame;
+      int start=op[i].opcode.vary.start_val;
+      int inc=(op[i].opcode.vary.end_val-start)/frame_num;
+      for (k=;k<;k++){
+	vary_node * new_node;
+	if(k>op[i].opcode.vary.start_frame && k<=op[i].opcode.vary.endframe)
+	  start+=inc;
+	new_node->value=start;
+	new_node->name=op[i].opcode.vary.p;
+	new_node->next=0;
+	if (!list[k])
+	  list[k]=vary_node;
+	else{
+	  temp=list[k];
+	  while (temp->next)
+	    temp=temp->next;
+	  temp->next=new_node;
+	}
+      }   
 }
 
 
