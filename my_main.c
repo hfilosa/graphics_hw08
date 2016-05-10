@@ -87,32 +87,28 @@ void first_pass(int *num_frames,char *name) {
   int frame_present=0;
   int i;
   for (i=0;i<lastop;i++) {
-    printf("%d\n",i);
     switch (op[i].opcode){
     case FRAMES:
       if (frame_present==0){
 	frame_present=1;
-	printf("%d\n",(int)op[i].op.frames.num_frames);
 	*num_frames=(int)op[i].op.frames.num_frames;
-	printf("%dsuccess\n",*num_frames);
       }
       else{
 	printf("FRAMES value set more than once\tCorrection: Only set FRAMES once\nExiting...\n");
 	exit(42);
       }
+      break;
     case BASENAME:
       printf("basename\n");
       if (name_present==0){
 	name_present=1;
-	printf("%p\n",op[i].op.basename.p);
-	char *str=op[i].op.basename.p->name;
-	printf("%s\n",op[i].op.basename.p->name);
 	strcpy(name,op[i].op.basename.p->name);
       }
       else{
 	printf("BASENAME set more than once\tCorrection: Only set BASENAME once\nExiting...\n");
 	exit(42);
       }
+      break;
     case VARY:
       vary_present+=1;
       if (op[i].op.vary.start_frame < 0){
@@ -127,16 +123,16 @@ void first_pass(int *num_frames,char *name) {
 	printf("VARY with frames given in decreasing order\tCorrection: The first vary frame should be before the last vary frame\nExiting...\n");
 	exit(42);
       }
+      break;
     }
-    printf("%d\n",i);
-    if (vary_present && !frame_present){
-      printf("VARY found without total FRAMEs set\tCorrection: You need to set the total number of frames\nExiting...\n");
-      exit(42);
-    }
-    if (!name_present && (vary_present || frame_present)){
-       printf("No BASENAME given\nExiting...\n");
-       name="boring.png";
-    }
+  }
+  if (vary_present && !frame_present){
+    printf("VARY found without total FRAMEs set\tCorrection: You need to set the total number of frames\nExiting...\n");
+    exit(42);
+  }
+  if (!name_present && (vary_present || frame_present)){
+    printf("No BASENAME given\nExiting...\n");
+    name="boring.png";
   }
 }
 
@@ -163,34 +159,31 @@ void first_pass(int *num_frames,char *name) {
   jdyrlandweaver
   ====================*/
 struct vary_node ** second_pass(int frames) {
-  struct vary_node * list[frames];
-  struct vary_node * temp;
+  struct vary_node ** knobs;
+  knobs = (struct vary_node **)malloc(sizeof(struct vary_node*)*num_frames);
   int i,k;
   for (i=0;i<frames;i++)
-    list[i]=0;
+    knobs[i]=0;
   for (i=0;i<lastop;i++) {
     if (op[i].opcode == VARY){
       int frame_num=op[i].op.vary.end_frame-op[i].op.vary.start_frame;
-      int start=op[i].op.vary.start_val;
-      int inc=(op[i].op.vary.end_val-start)/frame_num;
+      frame_num++;
+      double start=op[i].op.vary.start_val;
+      double inc=(op[i].op.vary.end_val-start)/frame_num;
+      printf("%f\n",inc);
       for (k=0;k<frames;k++){
 	struct vary_node * new_node;
+	new_node = (struct vary_node*)malloc(sizeof(struct vary_node));
 	if(k>op[i].op.vary.start_frame && k<=op[i].op.vary.end_frame)
 	  start+=inc;
 	new_node->value=start;
 	strcpy(new_node->name,op[i].op.vary.p->name);
-	new_node->next=0;
-	if (!list[k])
-	  list[k]=new_node;
-	else{
-	  temp=list[k];
-	  while (temp->next)
-	    temp=temp->next;
-	  temp->next=new_node;
-	}
-      }   
+	new_node->next=knobs[k];
+	knobs[k]=new_node;
+      }
     }
   }
+  return knobs;
 }
 
 
@@ -255,12 +248,13 @@ void my_main( int polygons ) {
   int i, f, j;
   double step;
   double xval, yval, zval, knob_value;
-  struct matrix *transform;
-  struct matrix *tmp;
-  struct stack *s;
+  struct matrix *transform=new_matrix(4,4);
+  struct matrix *tmp=new_matrix(4,4);
+  struct stack *s=new_stack();
   screen t;
   color g;
 
+  int factor;
   //struct vary_node **knobs;
   //struct vary_node *vn;
   char frame_name[128];
@@ -273,17 +267,27 @@ void my_main( int polygons ) {
   g.green = 255;
   g.blue = 255;
   
-  printf("yas\n");
   first_pass(&num_frames,frame_name);
-  printf("yass\n");
   if (num_frames!=1)
     is_anim=1;
   struct vary_node ** knobs=second_pass(num_frames);
-  printf("yassss\n");
+  printf("yasssss\n");
   struct vary_node * current;
   j=0;
   while(j<num_frames){
+    if (is_anim){
+      current=knobs[j];
+      print_knobs();
+      while (current->next){
+	set_value(lookup_symbol(current->name),current->value);
+	printf("%s %f\n",current->name,current->value);
+	current=current->next;
+      }
+      printf("%s %f\n",current->name,current->value);
+      set_value(lookup_symbol(current->name),current->value);
+    }
     for (i=0;i<lastop;i++) {
+      printf("%d\n",i);
       switch (op[i].opcode) {
       case SPHERE:
 	add_sphere( tmp,op[i].op.sphere.d[0], //cx
@@ -333,33 +337,52 @@ void my_main( int polygons ) {
 	break;
 
       case MOVE:
-	//get the factors
-	xval = op[i].op.move.d[0];
-	yval =  op[i].op.move.d[1];
-	zval = op[i].op.move.d[2];
-      
-	transform = make_translate( xval, yval, zval );
-	//multiply by the existing origin
-	matrix_mult( s->data[ s->top ], transform );
-	//put the new matrix on the top
-	copy_matrix( transform, s->data[ s->top ] );
-	free_matrix( transform );
+	//get the factor
+	printf("we out\n");
+	if (op[i].op.move.p)
+	  factor=op[i].op.move.p->s.value;
+	else
+	  factor=1;
+	if (factor){
+	  printf("we in\n");
+	  xval = op[i].op.move.d[0]*factor;
+	  yval =  op[i].op.move.d[1]*factor;
+	  zval = op[i].op.move.d[2]*factor;
+
+	  transform = make_translate( xval, yval, zval );
+	  //multiply by the existing origin
+	  matrix_mult( s->data[ s->top ], transform );
+	  //put the new matrix on the top
+	  copy_matrix( transform, s->data[ s->top ] );
+	  free_matrix( transform );
+	}
 	break;
 
       case SCALE:
-	xval = op[i].op.scale.d[0];
-	yval = op[i].op.scale.d[1];
-	zval = op[i].op.scale.d[2];
+	if (op[i].op.scale.p)
+	  factor=op[i].op.scale.p->s.value;
+	else
+	  factor=1;
+	if (factor){
+	  xval = op[i].op.scale.d[0]*factor;
+	  yval = op[i].op.scale.d[1]*factor;
+	  zval = op[i].op.scale.d[2]*factor;
       
-	transform = make_scale( xval, yval, zval );
-	matrix_mult( s->data[ s->top ], transform );
-	//put the new matrix on the top
-	copy_matrix( transform, s->data[ s->top ] );
-	free_matrix( transform );
+	  transform = make_scale( xval, yval, zval );
+	  matrix_mult( s->data[ s->top ], transform );
+	  //put the new matrix on the top
+	  copy_matrix( transform, s->data[ s->top ] );
+	  free_matrix( transform );
+	}
 	break;
 
       case ROTATE:
-	xval = op[i].op.rotate.degrees * ( M_PI / 180 );
+	if (op[i].op.scale.p)
+	  factor=op[i].op.rotate.p->s.value;
+	else
+	  factor=1;
+	if (factor){
+	xval = op[i].op.rotate.degrees * ( M_PI / 180 )*factor;
 
 	//get the axis
 	if ( op[i].op.rotate.axis == 0 ) 
@@ -373,6 +396,7 @@ void my_main( int polygons ) {
 	//put the new matrix on the top
 	copy_matrix( transform, s->data[ s->top ] );
 	free_matrix( transform );
+	}
 	break;
 
       case PUSH:
@@ -389,12 +413,12 @@ void my_main( int polygons ) {
 	break;
       }
     }
+    printf("success\n");
     if (is_anim){
-      current=knobs[j];      
-      print_symtab();
       //do animation
-      char * name;
+      char * name[150];
       sprintf(name,"anim/%0xd%s",j,frame_name);
+      printf("Saving %s\n",name);
       save_extension(t,name);
       clear_screen(t);
     }
