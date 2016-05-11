@@ -99,7 +99,6 @@ void first_pass(int *num_frames,char *name) {
       }
       break;
     case BASENAME:
-      printf("basename\n");
       if (name_present==0){
 	name_present=1;
 	strcpy(name,op[i].op.basename.p->name);
@@ -131,8 +130,8 @@ void first_pass(int *num_frames,char *name) {
     exit(42);
   }
   if (!name_present && (vary_present || frame_present)){
-    printf("No BASENAME given\nExiting...\n");
-    name="boring.png";
+    printf("No BASENAME given. Setting boring as BASENAME\n");
+    strcpy(name,"boring.png");
   }
 }
 
@@ -167,10 +166,8 @@ struct vary_node ** second_pass(int frames) {
   for (i=0;i<lastop;i++) {
     if (op[i].opcode == VARY){
       int frame_num=op[i].op.vary.end_frame-op[i].op.vary.start_frame;
-      frame_num++;
       double start=op[i].op.vary.start_val;
       double inc=(op[i].op.vary.end_val-start)/frame_num;
-      printf("%f\n",inc);
       for (k=0;k<frames;k++){
 	struct vary_node * new_node;
 	new_node = (struct vary_node*)malloc(sizeof(struct vary_node));
@@ -248,13 +245,14 @@ void my_main( int polygons ) {
   int i, f, j;
   double step;
   double xval, yval, zval, knob_value;
-  struct matrix *transform=new_matrix(4,4);
-  struct matrix *tmp=new_matrix(4,4);
+  struct matrix *transform;
+  struct matrix *tmp;
   struct stack *s=new_stack();
   screen t;
+  clear_screen(t);
   color g;
 
-  int factor;
+  double factor;
   //struct vary_node **knobs;
   //struct vary_node *vn;
   char frame_name[128];
@@ -271,23 +269,20 @@ void my_main( int polygons ) {
   if (num_frames!=1)
     is_anim=1;
   struct vary_node ** knobs=second_pass(num_frames);
-  printf("yasssss\n");
   struct vary_node * current;
   j=0;
   while(j<num_frames){
+    tmp=new_matrix(4,4);
+    struct stack *s=new_stack();
     if (is_anim){
       current=knobs[j];
-      print_knobs();
       while (current->next){
 	set_value(lookup_symbol(current->name),current->value);
-	printf("%s %f\n",current->name,current->value);
 	current=current->next;
       }
-      printf("%s %f\n",current->name,current->value);
       set_value(lookup_symbol(current->name),current->value);
     }
     for (i=0;i<lastop;i++) {
-      printf("%d\n",i);
       switch (op[i].opcode) {
       case SPHERE:
 	add_sphere( tmp,op[i].op.sphere.d[0], //cx
@@ -338,13 +333,11 @@ void my_main( int polygons ) {
 
       case MOVE:
 	//get the factor
-	printf("we out\n");
 	if (op[i].op.move.p)
 	  factor=op[i].op.move.p->s.value;
 	else
 	  factor=1;
-	if (factor){
-	  printf("we in\n");
+	if (factor!=0){
 	  xval = op[i].op.move.d[0]*factor;
 	  yval =  op[i].op.move.d[1]*factor;
 	  zval = op[i].op.move.d[2]*factor;
@@ -363,7 +356,7 @@ void my_main( int polygons ) {
 	  factor=op[i].op.scale.p->s.value;
 	else
 	  factor=1;
-	if (factor){
+	if (factor!=0){
 	  xval = op[i].op.scale.d[0]*factor;
 	  yval = op[i].op.scale.d[1]*factor;
 	  zval = op[i].op.scale.d[2]*factor;
@@ -377,25 +370,25 @@ void my_main( int polygons ) {
 	break;
 
       case ROTATE:
-	if (op[i].op.scale.p)
+	if (op[i].op.rotate.p)
 	  factor=op[i].op.rotate.p->s.value;
 	else
 	  factor=1;
-	if (factor){
-	xval = op[i].op.rotate.degrees * ( M_PI / 180 )*factor;
+	if (factor!=0){
+	  xval = op[i].op.rotate.degrees * ( M_PI / 180 )*factor;
 
-	//get the axis
-	if ( op[i].op.rotate.axis == 0 ) 
-	  transform = make_rotX( xval );
-	else if ( op[i].op.rotate.axis == 1 ) 
-	  transform = make_rotY( xval );
-	else if ( op[i].op.rotate.axis == 2 ) 
-	  transform = make_rotZ( xval );
+	  //get the axis
+	  if ( op[i].op.rotate.axis == 0 ) 
+	    transform = make_rotX( xval );
+	  else if ( op[i].op.rotate.axis == 1 ) 
+	    transform = make_rotY( xval );
+	  else if ( op[i].op.rotate.axis == 2 ) 
+	    transform = make_rotZ( xval );
 
-	matrix_mult( s->data[ s->top ], transform );
-	//put the new matrix on the top
-	copy_matrix( transform, s->data[ s->top ] );
-	free_matrix( transform );
+	  matrix_mult( s->data[ s->top ], transform );
+	  //put the new matrix on the top
+	  copy_matrix( transform, s->data[ s->top ] );
+	  free_matrix( transform );
 	}
 	break;
 
@@ -413,18 +406,24 @@ void my_main( int polygons ) {
 	break;
       }
     }
-    printf("success\n");
     if (is_anim){
-      //do animation
+      print_knobs();
       char * name[150];
-      sprintf(name,"anim/%0xd%s",j,frame_name);
-      printf("Saving %s\n",name);
+      printf("frame num: %d\n",j);
+      printf("name: %s\n",frame_name);
+      if (num_frames<10)
+	sprintf(name,"anim/%s%0d.png",frame_name,j);
+      else if (10<num_frames<100)
+	sprintf(name,"anim/%s%03d.png",frame_name,j);
+      else if (100<num_frames<1000)
+	sprintf(name,"anim/%s%04d.png",frame_name,j);
+      printf("Saving %s\n\n",name);
       save_extension(t,name);
       clear_screen(t);
     }
-    j++;
-  }
     free_stack( s );
     free_matrix( tmp );
+    j++;
+  }
     //free_matrix( transform );
 }
