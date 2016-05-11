@@ -94,7 +94,7 @@ void first_pass(int *num_frames,char *name) {
 	*num_frames=(int)op[i].op.frames.num_frames;
       }
       else{
-	printf("FRAMES value set more than once\tCorrection: Only set FRAMES once\nExiting...\n");
+	printf("FRAMES value set more than once\n\tCorrection: Only set FRAMES once\nExiting...\n");
 	exit(42);
       }
       break;
@@ -104,29 +104,29 @@ void first_pass(int *num_frames,char *name) {
 	strcpy(name,op[i].op.basename.p->name);
       }
       else{
-	printf("BASENAME set more than once\tCorrection: Only set BASENAME once\nExiting...\n");
+	printf("BASENAME set more than once\n\tCorrection: Only set BASENAME once\nExiting...\n");
 	exit(42);
       }
       break;
     case VARY:
       vary_present+=1;
       if (op[i].op.vary.start_frame < 0){
-	printf("VARY with negative frames\tCorrection: Don't use negative frames\nExiting...\n");
+	printf("VARY with negative frames\n\tCorrection: Don't use negative frames\nExiting...\n");
 	exit(42);
       }
       if (op[i].op.vary.end_frame < 0){
-	printf("VARY with frames beyond last frame\tCorrection: Don't exceed last frame\nExiting...\n");
+	printf("VARY with frames beyond last frame\n\tCorrection: Don't exceed last frame\nExiting...\n");
 	exit(42);
       }
       if (op[i].op.vary.start_frame > op[i].op.vary.end_frame){
-	printf("VARY with frames given in decreasing order\tCorrection: The first vary frame should be before the last vary frame\nExiting...\n");
+	printf("VARY with frames given in decreasing order\n\tCorrection: The first vary frame should be before the last vary frame\nExiting...\n");
 	exit(42);
       }
       break;
     }
   }
   if (vary_present && !frame_present){
-    printf("VARY found without total FRAMEs set\tCorrection: You need to set the total number of frames\nExiting...\n");
+    printf("VARY found without total FRAMEs set\n\tCorrection: You need to set the total number of frames\nExiting...\n");
     exit(42);
   }
   if (!name_present && (vary_present || frame_present)){
