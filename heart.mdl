@@ -1,67 +1,30 @@
 basename heart
-frames 100
+frames 90
 
+push
 move 250 250 0
+rotate y 360 knob1
+rotate x 360 knob2
+move 0 0 100
 
+//left side
 push
-rotate y -360 sphere_spin
-sphere 0 -100 50 50
-sphere 0 -100 -50 50
-sphere -100 -100 0 50
-sphere 100 -100 0 50
+move -250 160 0
+box 0 0 0 160 160 200
+move 0 -160 0
+rotate z 45
+box 0 0 0 226.24 353.55 200
 pop
 
 push
-move 0 100 0
-box -30 0 20 60 160 40
-line -30 0 20 0 30 0
-line -30 0 -20 0 30 0
-line 30 0 20 0 30 0
-line 30 0 -20 0 30 0
-
+//Right side
+move 90 160 0
 push
-move 0 30 0
-rotate y 360 heart_spin
-line 0 0 0 -50 40 0
-line 0 0 0 50 40 0
-line -50 40 0 -50 70 0
-line 50 40 0 50 70 0
-line -50 70 0 -30 70 0
-line 50 70 0 30 70 0
-line -30 70 0 0 50 0
-line 30 70 0 0 50 0
-pop
+box 0 0 0 160 160 200
+rotate z -45
+box 0 0 0 226.24 353.55 200
 pop
 
-push
-rotate y -360 torus_spin
-torus 0 -200 0 50 80
-pop
 
-push
-rotate x -50
-
-push
-move 120 -70 0
-move 0 100 0 mtorus1
-rotate y -360 torus1
-torus 120 0 0 30 50
-pop
-
-push
-move -120 -70 0
-move 0 100 0 mtorus2
-rotate y -360 torus2
-torus 0 0 0 30 50
-pop
-pop
-
-vary heart_spin 0 99 0 1
-vary sphere_spin 0 99 0 1
-vary torus_spin 0 99 0 1
-vary torus1 0 99 0 1
-vary torus2 0 99 0 1
-vary mtorus1 0 49 0 1
-vary mtorus1 50 99 1 0
-vary mtorus2 0 49 0 1
-vary mtorus2 50 99 1 0
+vary knob1 0 80 0 1
+vary knob2 0 80 0 1
